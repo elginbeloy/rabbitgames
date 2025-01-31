@@ -214,3 +214,29 @@ body {
   font-size: 14px;
   font-weight: 600;
 }
+
+#game-container {
+  position: absolute;
+  top: 2.5%;
+  left: 35%;
+  width: 62.5%;
+  height: 95%;
+  padding: 20px;
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  background-color: #282A36;
+  border: 1px solid #BD93F9;
+  border-radius: 16px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#game {
+  position: relative;
+  width: 62.5vw;
+  height: 40vw;
+  cursor: none;
+}
