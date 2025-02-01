@@ -85,6 +85,22 @@ crossHairImage.src = "./images/crosshair.png";
 const shipOneImage = new Image();
 shipOneImage.src = "./images/ship_one.png";
 
+const shipTwoImage = new Image();
+shipTwoImage.src = "./images/ship_two.png";
+
+const shipThreeImage = new Image();
+shipThreeImage.src = "./images/ship_three.png";
+
+const shipFourImage = new Image();
+shipFourImage.src = "./images/ship_four.png";
+
+const shipImages = [
+  shipOneImage,
+  shipTwoImage,
+  shipThreeImage,
+  shipFourImage
+];
+
 const canvas = document.getElementById("game");
 canvas.width = canvas.clientWidth;
 canvas.height = canvas.clientHeight;
@@ -94,16 +110,38 @@ let mouseY = 0;
 let isRunning = false;
 let animationFrameId = null;
 let laserShots = [];
+let ships = [];
+for (let i = 0; i < 10; i++) {
+  ships.push({
+    x: Math.random()*canvas.width,
+    y: Math.random()*canvas.height,
+    level: Math.round(Math.random()*3)
+  })
+}
 
 context.clearRect(0, 0, canvas.width, canvas.height);
-context.fillStyle = '#6272A4';
+context.fillStyle = '#313652';
 context.fillRect(0, 0, canvas.width, canvas.height);
 
 function gameLoop() {
   context.clearRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = '#6272A4';
+  context.fillStyle = '#313652';
   context.fillRect(0, 0, canvas.width, canvas.height);
-  context.drawImage(shipOneImage, 450, 200);
+
+  for (let ship of ships) {
+    const dx = ship.x - canvas.width / 2;
+    const dy = canvas.height - ship.y;
+    const distance = Math.sqrt(dx * dx * 0.1 + dy * dy);
+    let scale = 1 - (distance / canvas.height);
+    if (scale < 0.1) scale = 0.1;
+
+    context.save();
+    context.translate(ship.x, ship.y);
+    context.scale(scale, scale);
+    context.drawImage(shipImages[ship.level], 0, 0);
+    context.restore();
+  }
+
   context.drawImage(crossHairImage, mouseX - 16, mouseY - 16);
 
   const now = performance.now();
