@@ -62,7 +62,7 @@ const playerStatsElement = (stats) => `
 <div>Completed Tasks: <span class="pink">${stats.history.length}</span></div>
 <div>History Log:</div>
 <div id="task-history">${stats.history.join("\n")}</div>
-`
+`;
 
 function render() {
   const gameElements = playerStats.games.map((game) => gameElement(game.name));
@@ -105,35 +105,104 @@ const canvas = document.getElementById("game");
 canvas.width = canvas.clientWidth;
 canvas.height = canvas.clientHeight;
 const context = canvas.getContext("2d");
+
 let mouseX = 0;
 let mouseY = 0;
 let isRunning = false;
 let animationFrameId = null;
 let laserShots = [];
+
 let ships = [];
-for (let i = 0; i < 10; i++) {
-  ships.push({
-    x: Math.random()*canvas.width,
-    y: Math.random()*canvas.height,
-    level: Math.round(Math.random()*3)
-  })
+let stars = [];
+
+/* 3D starfield variables */
+const centerX = canvas.width / 2;
+const centerY = canvas.height / 2;
+const focalLength = 800;
+
+// INITIALIZERS
+function initShips(numShips) {
+  ships = [];
+  for (let i = 0; i < numShips; i++) {
+    ships.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      distance: 200 + Math.random() * 800,     // “Depth” away from camera
+      distanceVel: 1 + Math.random() * 1,      // How fast distance decreases
+      xVel: (Math.random() - 0.5) * 0.5,       // Horizontal drift
+      yVel: (Math.random() - 0.5) * 0.1,       // Vertical drift
+      level: Math.floor(Math.random() * 4)     // Type of ship
+    });
+  }
 }
 
-context.clearRect(0, 0, canvas.width, canvas.height);
-context.fillStyle = '#313652';
-context.fillRect(0, 0, canvas.width, canvas.height);
+function initStars(numStars) {
+  stars = [];
+  for (let i = 0; i < numStars; i++) {
+    stars.push({
+      x: (Math.random() - 0.5) * canvas.width,  // Start randomly around center
+      y: (Math.random() - 0.5) * canvas.height, // "
+      z: Math.random() * 2000,                 // Random depth
+      speed: 1 + Math.random() * 3             // Speed star travels
+    });
+  }
+}
+
+// Call our initializers
+initShips(10);
+initStars(250);
 
 function gameLoop() {
   context.clearRect(0, 0, canvas.width, canvas.height);
+  // Background color
   context.fillStyle = '#313652';
   context.fillRect(0, 0, canvas.width, canvas.height);
 
+  // 1) Update and draw stars (3D effect)
+  context.fillStyle = 'white';
+  for (let star of stars) {
+    // Move star closer
+    star.z -= star.speed;
+    // If star passes beyond our focal point, reset it
+    if (star.z < 1) {
+      star.x = (Math.random() - 0.5) * canvas.width;
+      star.y = (Math.random() - 0.5) * canvas.height;
+      star.z = 2000;
+      star.speed = 1 + Math.random() * 3;
+    }
+    // Project x, y using perspective
+    const scale = focalLength / star.z;
+    const screenX = centerX + (star.x * scale);
+    const screenY = centerY + (star.y * scale);
+    // Size can be scaled if desired; here just use a constant or scale
+    const starSize = Math.max(1, 4 * (1.0 - star.z / 2000));
+
+    context.fillRect(screenX, screenY, starSize, starSize);
+  }
+
+  // 2) Update ships
   for (let ship of ships) {
-    const dx = ship.x - canvas.width / 2;
-    const dy = canvas.height - ship.y;
-    const distance = Math.sqrt(dx * dx * 0.1 + dy * dy);
-    let scale = 1 - (distance / canvas.height);
-    if (scale < 0.1) scale = 0.1;
+    ship.distance -= ship.distanceVel; // move closer
+    ship.x += ship.xVel;
+    ship.y += ship.yVel;
+
+    // If the ship passes "through" us (distance < 0), reposition it far away again
+    if (ship.distance < 0) {
+      ship.distance = 800 + Math.random() * 400;
+      ship.x = Math.random() * canvas.width;
+      ship.y = Math.random() * canvas.height;
+    }
+  }
+
+  // 3) Sort ships by distance
+  ships.sort((a, b) => b.distance - a.distance);
+
+  // 4) Draw ships
+  for (let ship of ships) {
+    let scale = 1 - (ship.distance / 1000);  // Tweak as desired
+    if (scale < 0.1) {
+      scale = 0.1;
+    }
 
     context.save();
     context.translate(ship.x, ship.y);
@@ -142,8 +211,10 @@ function gameLoop() {
     context.restore();
   }
 
+  // 5) Crosshair
   context.drawImage(crossHairImage, mouseX - 16, mouseY - 16);
 
+  // 6) Laser shots
   const now = performance.now();
   for (let i = laserShots.length - 1; i >= 0; i--) {
     let shot = laserShots[i];
@@ -163,6 +234,7 @@ function gameLoop() {
     }
   }
 
+  // Continue game loop
   if (isRunning) {
     animationFrameId = requestAnimationFrame(gameLoop);
   }
@@ -227,7 +299,12 @@ document.getElementById("add-task").addEventListener("click", () => {
 
 document.getElementById("restart").addEventListener("click", () => {
   // WARNING: this might cause issues later if nested object is shallow cloned
-  playerStats = { ...defaultPlayerStats };
+  playerStats.games = [];
+  playerStats.points = 0;
+  playerStats.history = [];
   savePlayerStats(playerStats);
   render();
+  // Also re-init the ships/stars if desired:
+  initShips(10);
+  initStars(250);
 });
